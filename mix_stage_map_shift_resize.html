@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mix Stage Map</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#eef1f5;color:#0f172a}
+.wrap{max-width:1600px;margin:auto;padding:12px;overflow-x:auto}
+h1{margin:0 0 8px;font-size:28px}
+.sub{color:#555;margin-bottom:20px}
+.grid{display:grid;grid-template-columns:minmax(200px,260px) minmax(0,1fr);gap:20px;align-items:start;width:100%}
+.card{background:rgba(255,255,255,.9);border:1px solid rgba(15,23,42,.06);border-radius:20px;padding:16px;box-shadow:0 10px 30px rgba(15,23,42,.06);backdrop-filter:blur(8px)}
+.card:hover{box-shadow:0 14px 36px rgba(15,23,42,.08)}
+.card h2{margin:0 0 12px;font-size:18px}
+.row{margin-bottom:12px}
+label{display:block;font-size:12px;margin-bottom:5px;color:#64748b;font-weight:600}
+input,button,select,textarea{font:inherit}
+input[type=text],textarea,input[type=range]{width:100%}
+input[type=text],textarea{border:1px solid rgba(148,163,184,.35);border-radius:12px;padding:9px 10px;background:#fff}
+textarea{min-height:120px;resize:vertical}
+button{border:0;border-radius:12px;padding:8px 12px;background:#111;color:#fff;cursor:pointer;font-weight:600}
+button.subtle{background:#f1f5f9;color:#334155;border:1px solid rgba(148,163,184,.25)}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.project-row{display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-bottom:12px}
+.project-row .field{min-width:220px;flex:1}
+.copy-row{display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.copy-row select{height:32px;padding:2px 6px}
+.copy-row label{margin:0;font-size:12px;color:#64748b}
+.track-list{display:flex;flex-direction:column;gap:6px;max-height:420px;overflow:auto}
+.track-item{border:1px solid rgba(148,163,184,.22);border-radius:12px;padding:8px;cursor:grab;display:flex;gap:8px;align-items:center;justify-content:space-between;background:#fff}
+.track-item.active{background:#ffffff;border-color:rgba(15,23,42,.22);box-shadow:0 6px 16px rgba(15,23,42,.06)}
+.track-item.dragging{opacity:.5}
+.track-item.drop-target{outline:2px solid #111;outline-offset:2px}
+.track-main{display:flex;gap:8px;align-items:center;min-width:0}
+.track-name-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
+.dot-preview{width:12px;height:12px;border-radius:50%}
+.stage-wrap{display:flex;justify-content:center;align-items:center;min-height:calc(100vh - 240px)}
+.stage{position:relative;width:min(70vw,70vh);height:min(70vw,70vh);min-width:320px;min-height:320px;max-width:920px;max-height:920px;border:1px solid rgba(148,163,184,.35);border-radius:24px;background:linear-gradient(to right,rgba(148,163,184,.14) 1px,transparent 1px),linear-gradient(to bottom,rgba(148,163,184,.14) 1px,transparent 1px),linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);background-size:12.5% 10%,12.5% 10%,auto;overflow:hidden;touch-action:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
+.stage::before{content:"";position:absolute;left:50%;top:0;height:100%;width:0;border-left:1px dashed rgba(100,116,139,.28);pointer-events:none}
+.stage-label{position:absolute;font-size:11px;color:#475569;background:rgba(255,255,255,.78);padding:4px 8px;border-radius:999px;border:1px solid rgba(148,163,184,.2);backdrop-filter:blur(6px)}
+.stage-label.back{top:10px;left:10px}
+.stage-label.front{bottom:10px;left:10px}
+.track-dot{position:absolute;border-radius:50%;border:2px solid rgba(0,0,0,.12);box-shadow:0 10px 26px rgba(0,0,0,.22), inset 0 2px 4px rgba(255,255,255,.25);transform:translate(-50%,-50%);cursor:grab}
+.track-dot.shift-resize{cursor:nwse-resize}
+.track-name{position:absolute;font-size:15px;font-weight:600;background:#fff;padding:4px 10px;border-radius:999px;white-space:nowrap;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.08);max-width:140px;overflow:hidden;text-overflow:ellipsis}
+.labels{display:flex;justify-content:space-between;font-size:12px;color:#666;margin-top:6px;width:min(calc(100vw - 420px), calc(100vh - 260px));min-width:360px;max-width:920px;margin-left:auto;margin-right:auto}
+.section-bar{margin-top:20px}
+.section-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+.section-card{border:1px solid #e5e7eb;border-radius:12px;padding:10px;background:#fafafa;text-align:left;min-height:230px;display:flex;flex-direction:column}
+.section-card.active{background:#ffffff;border-color:rgba(15,23,42,.22);box-shadow:0 6px 16px rgba(15,23,42,.06)}
+.section-card.dragging{opacity:.5}
+.section-card.drop-target{outline:2px solid #111;outline-offset:2px}
+.section-header{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.section-title{font-size:14px;font-weight:600;cursor:pointer;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.section-rename{width:100%;font-size:13px}
+.section-mini{position:relative;width:100%;aspect-ratio:1/1;border:1px solid #d1d5db;border-radius:8px;background:linear-gradient(to right,#e5e7eb 1px,transparent 1px),linear-gradient(to bottom,#e5e7eb 1px,transparent 1px),white;background-size:12.5% 10%,12.5% 10%,auto;margin-top:6px;overflow:hidden;flex:0 0 auto}
+.section-mini::before{content:"";position:absolute;left:50%;top:0;height:100%;width:1px;border-left:1px dashed #cbd5e1}
+.icon-btn{border:1px solid #d1d5db;background:#fff;color:#333;padding:2px 6px;border-radius:8px;font-size:12px}
+.muted{font-size:12px;color:#6b7280}
+.section-todo-wrap{margin-top:8px;padding-top:8px;border-top:1px solid #eceff3;display:flex;flex-direction:column;gap:6px}
+.section-todo-list{display:flex;flex-direction:column;gap:6px;min-height:54px}
+.section-todo-item{display:flex;align-items:flex-start;gap:6px;font-size:12px;line-height:1.35;color:#374151}
+.section-todo-item input[type="checkbox"]{margin-top:2px}
+.section-todo-text{flex:1;word-break:break-word}
+.section-todo-item.done .section-todo-text{color:#9ca3af;text-decoration:line-through}
+.section-todo-edit{flex:1;border:1px solid #d1d5db;border-radius:8px;padding:4px 6px;font-size:12px;background:#fff;min-width:0}
+.section-todo-add{display:flex;gap:6px;align-items:center}
+.section-todo-input{flex:1;border:1px solid #d1d5db;border-radius:8px;padding:6px 8px;font-size:12px;background:#fff}
+.section-todo-btn{border:1px solid #d1d5db;background:#fff;color:#333;padding:6px 8px;border-radius:8px;font-size:12px}
+.section-todo-empty{font-size:12px;color:#9ca3af}
+.section-todo-more{font-size:11px;color:#6b7280;cursor:pointer;display:inline-flex;align-items:center;gap:4px;background:transparent;border:none;padding:0}
+.section-todo-more:hover{color:#111}
+.toggle{display:flex;align-items:center;gap:6px;font-size:12px;color:#555}
+@media (max-width:1100px){
+  .grid{grid-template-columns:minmax(220px,280px) 1fr}
+  .stage{width:min(68vw,60vh);height:min(68vw,60vh)}
+  .labels{width:min(68vw,60vh)}
+}
+@media (max-width:760px){
+  .grid{grid-template-columns:minmax(180px,220px) 1fr;gap:14px}
+  .stage-wrap{min-height:auto}
+  .stage,.labels{width:min(56vw,62vh);min-width:260px}
+  .stage{height:min(56vw,62vh)}
+}
+  .stage-wrap{min-height:auto}
+  .stage,.labels{width:min(94vw,70vh);min-width:280px}
+  .stage{height:min(94vw,70vh)}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Mix Stage Map</h1>
+  <div class="sub">ステージ編集＋下にセクション俯瞰。円はドラッグで位置、右下ハンドルでサイズ変更。トラックとセクションは並べ替えできます。</div>
+
+  <div class="project-row">
+    <div class="field">
+      <label>曲名 / プロジェクト名</label>
+      <input id="projectNameInput" type="text" placeholder="例: New Song">
+    </div>
+    <div><button id="saveProjectBtn" class="subtle">保存</button></div>
+    <div>
+      <button id="loadProjectBtn" class="subtle">読込</button>
+      <input id="loadProjectInput" type="file" accept="application/json" style="display:none">
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>トラック</h2>
+      <div class="btns">
+        <button id="addTrackBtn">追加</button>
+        <button id="duplicateTrackBtn" class="subtle">複製</button>
+        <button id="deleteTrackBtn" class="subtle">削除</button>
+        <button id="saveDefaultsBtn" class="subtle">名前と色をデフォルト保存</button>
+        <button id="resetDefaultsBtn" class="subtle">デフォルト解除</button>
+      </div>
+      <div class="track-list" id="trackList"></div>
+      <hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb">
+      <h2>楽器</h2>
+      <div class="row"><label>名前</label><input id="nameInput" type="text"></div>
+      <div class="row"><label>色</label><input id="colorInput" type="color" style="height:36px"></div>
+      <div class="row"><label>Pan</label><input id="panSlider" type="range" min="-100" max="100" step="1"><div class="muted" id="panValue"></div></div>
+      <div class="row"><label>Depth</label><input id="depthSlider" type="range" min="0" max="100" step="1"><div class="muted" id="depthValue"></div></div>
+      <div class="row"><label>Width</label><input id="widthSlider" type="range" min="10" max="400" step="1"><div class="muted" id="widthValue"></div></div>
+      <div class="row"><label>Height</label><input id="heightSlider" type="range" min="10" max="400" step="1"><div class="muted" id="heightValue"></div></div>
+      <div class="muted">トラック一覧はドラッグで並べ替えできます。</div>
+    </div>
+
+    <div class="card">
+      <h2>Stage</h2>
+      <div class="stage-wrap">
+        <div class="stage" id="stage">
+          <div id="stageSectionTitle" style="position:absolute;top:18px;left:50%;transform:translateX(-50%);font-size:64px;font-weight:800;pointer-events:none;color:#000;opacity:.12;letter-spacing:.12em;white-space:nowrap"></div>
+          <div class="stage-label back">Back</div>
+          <div class="stage-label front">Front</div>
+        </div>
+      </div>
+      <div class="labels"><span>L</span><span>Center</span><span>R</span></div>
+
+      <div class="section-bar">
+        <h2>Sections</h2>
+        <div class="copy-row">
+          <label>コピー</label>
+          <select id="copyFromSection"></select>
+          <span style="font-size:14px">→</span>
+          <select id="copyToSection"></select>
+          <button id="copySectionBtn" class="subtle">コピー</button>
+          <button id="addSectionBtn" class="subtle">セクション追加</button>
+        </div>
+        <div class="section-grid" id="sectionGrid"></div>
+        <div class="muted" style="margin-top:8px">セクション名をクリックすると名前変更。カードはドラッグで並べ替えできます。</div>
+      </div>
+
+      <div class="muted" id="statusText" style="margin-top:12px"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  const DEFAULT_SECTIONS = ["Intro", "Verse", "Pre", "Chorus", "Bridge", "Outro"];
+  const DEFAULT_NAME_COLOR_STORAGE_KEY = "mix-stage-map-default-name-color-v1";
+  const DEFAULT_TRACKS = [
+    { id: 1, name: "Vocal", color: "#8ec5ff", pos: {} },
+    { id: 2, name: "Kick", color: "#f8b46a", pos: {} }
+  ];
+
+  function defaultPos(){
+    return { pan:0, depth:50, w:60, h:60, visible:true };
+  }
+
+  function clone(value){
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function loadStoredNameColorDefaults(){
+    try{
+      const raw = localStorage.getItem(DEFAULT_NAME_COLOR_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      return Array.isArray(parsed) ? parsed : null;
+    }catch(err){
+      return null;
+    }
+  }
+
+  function getDefaultTracksWithStoredNamesAndColors(){
+    const stored = loadStoredNameColorDefaults();
+    if(!stored || !stored.length) return clone(DEFAULT_TRACKS);
+
+    return stored.map((saved, index) => ({
+      id: typeof saved.id === 'number' ? saved.id : (index + 1),
+      name: typeof saved.name === 'string' && saved.name.trim() ? saved.name : `Track ${index + 1}`,
+      color: typeof saved.color === 'string' && saved.color ? saved.color : '#c7ced8',
+      pos: {}
+    }));
+  }
+
+  function buildDefaultTracks(){
+    const base = getDefaultTracksWithStoredNamesAndColors();
+    DEFAULT_SECTIONS.forEach(section => {
+      base.forEach(track => {
+        track.pos[section] = defaultPos();
+      });
+    });
+    if (base[0]) base[0].pos.Chorus = { pan:0, depth:20, w:70, h:70, visible:true };
+    if (base[1]) base[1].pos.Chorus = { pan:0, depth:40, w:55, h:55, visible:true };
+    return base;
+  }
+
+  function fitSizeToStageSize(value, stageEl){
+    const scale = stageEl.clientWidth / 560;
+    return Math.max(6, Math.round(value * scale));
+  }
+
+  function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+  function snap(value,step){ return Math.round(value/step)*step; }
+  function depthOpacity(depth){ return (0.18 + (100 - depth) / 100 * 0.42).toFixed(2); }
+  function sanitizeFileName(name){ return (name || "mix-stage-project").replace(/[\\/:*?"<>|]/g,"_"); }
+
+  function moveItem(arr, fromIndex, toIndex){
+    if(fromIndex===toIndex || fromIndex<0 || toIndex<0) return arr;
+    const copy=[...arr];
+    const item=copy.splice(fromIndex,1)[0];
+    copy.splice(toIndex,0,item);
+    return copy;
+  }
+
+  let SECTIONS = [...DEFAULT_SECTIONS];
+  let projectName = "Untitled Song";
+  let tracks = buildDefaultTracks();
+  let selectedId = tracks[0]?.id ?? null;
+  let activeSection = SECTIONS[0];
+  let dragging = null;
+  let dragOffset = {x:0,y:0};
+  let dragMode = null;
+  let resizeStart = null;
+  let sectionEditing = null;
+  let draggedTrackId = null;
+  let trackDropId = null;
+  let draggedSection = null;
+  let sectionDrop = null;
+  let sectionTodos = Object.fromEntries(SECTIONS.map(section => [section, []]));
+  let expandedTodoSections = {};
+  let editingTodo = null;
+  let shiftKeyDown = false;
+
+  function byId(id){ return document.getElementById(id); }
+
+  const elements = {
+    panSlider: byId("panSlider"),
+    depthSlider: byId("depthSlider"),
+    widthSlider: byId("widthSlider"),
+    heightSlider: byId("heightSlider"),
+    panValue: byId("panValue"),
+    depthValue: byId("depthValue"),
+    widthValue: byId("widthValue"),
+    heightValue: byId("heightValue"),
+    stage: byId("stage"),
+    trackList: byId("trackList"),
+    sectionGrid: byId("sectionGrid"),
+    statusText: byId("statusText"),
+    nameInput: byId("nameInput"),
+    colorInput: byId("colorInput"),
+    copyFromSection: byId("copyFromSection"),
+    copyToSection: byId("copyToSection"),
+    projectNameInput: byId("projectNameInput"),
+    saveProjectBtn: byId("saveProjectBtn"),
+    loadProjectBtn: byId("loadProjectBtn"),
+    loadProjectInput: byId("loadProjectInput"),
+    addTrackBtn: byId("addTrackBtn"),
+    duplicateTrackBtn: byId("duplicateTrackBtn"),
+    deleteTrackBtn: byId("deleteTrackBtn"),
+    addSectionBtn: byId("addSectionBtn"),
+    copySectionBtn: byId("copySectionBtn"),
+    saveDefaultsBtn: byId("saveDefaultsBtn"),
+    resetDefaultsBtn: byId("resetDefaultsBtn"),
+    stageSectionTitle: byId("stageSectionTitle")
+  };
+
+  function assertRequiredElements(){
+    const missing = Object.entries(elements).filter(([, el]) => !el).map(([key]) => key);
+    if(missing.length){
+      throw new Error("必須要素が見つかりません: " + missing.join(", "));
+    }
+  }
+
+  function getSelected(){
+    return tracks.find(t => t.id === selectedId) || null;
+  }
+
+  function getBrightnessByTrackOrder(trackId){
+    const index = tracks.findIndex(t => t.id === trackId);
+    const total = Math.max(tracks.length - 1, 1);
+    const normalized = index < 0 ? 0.5 : index / total;
+    return 1.25 - (normalized * 0.55);
+  }
+
+  function ensureSectionTodos(){
+    const next = {};
+    SECTIONS.forEach(section => {
+      const todos = sectionTodos && Array.isArray(sectionTodos[section]) ? sectionTodos[section] : [];
+      next[section] = todos.map(todo => ({
+        text: typeof todo.text === 'string' ? todo.text : '',
+        done: !!todo.done
+      })).filter(todo => todo.text.trim());
+    });
+    sectionTodos = next;
+
+    const expandedNext = {};
+    SECTIONS.forEach(section => {
+      expandedNext[section] = !!expandedTodoSections[section];
+    });
+    expandedTodoSections = expandedNext;
+  }
+
+  function ensureTrackPositions(track){
+    if(!track.pos || typeof track.pos !== 'object') track.pos = {};
+    SECTIONS.forEach(section => {
+      if(!track.pos[section]) track.pos[section] = defaultPos();
+    });
+  }
+
+  function normalizeTrack(track, fallbackId){
+    const normalized = {
+      id: typeof track.id === 'number' ? track.id : fallbackId,
+      name: typeof track.name === 'string' && track.name.trim() ? track.name : 'New',
+      color: typeof track.color === 'string' && track.color ? track.color : '#c7ced8',
+      pos: track.pos && typeof track.pos === 'object' ? track.pos : {}
+    };
+    ensureTrackPositions(normalized);
+    return normalized;
+  }
+
+  function getProjectPayload(){
+    ensureSectionTodos();
+    return {
+      name: elements.projectNameInput.value.trim() || "Untitled Song",
+      sections: [...SECTIONS],
+      tracks: clone(tracks),
+      sectionTodos: clone(sectionTodos),
+      activeSection,
+      selectedId,
+      savedAt: new Date().toISOString(),
+    };
+  }
+
+  function applyProject(project){
+    if(!project || typeof project !== 'object') return;
+    projectName = project.name || "Untitled Song";
+    elements.projectNameInput.value = projectName;
+    SECTIONS = Array.isArray(project.sections) && project.sections.length ? [...project.sections] : [...DEFAULT_SECTIONS];
+    const incomingTracks = Array.isArray(project.tracks) ? project.tracks : [];
+    tracks = incomingTracks.length
+      ? incomingTracks.map((track, index) => normalizeTrack(clone(track), Date.now() + index))
+      : buildDefaultTracks();
+    sectionTodos = project.sectionTodos && typeof project.sectionTodos === 'object' ? clone(project.sectionTodos) : Object.fromEntries(SECTIONS.map(section => [section, []]));
+    ensureSectionTodos();
+    activeSection = SECTIONS.includes(project.activeSection) ? project.activeSection : SECTIONS[0];
+    selectedId = tracks.some(t => t.id === project.selectedId) ? project.selectedId : (tracks[0]?.id ?? null);
+  }
+
+  function refreshCopySelects(){
+    const fromVal = elements.copyFromSection.value;
+    const toVal = elements.copyToSection.value;
+    elements.copyFromSection.innerHTML = "";
+    elements.copyToSection.innerHTML = "";
+    SECTIONS.forEach(s => {
+      elements.copyFromSection.add(new Option(s, s));
+      elements.copyToSection.add(new Option(s, s));
+    });
+    elements.copyFromSection.value = SECTIONS.includes(fromVal) ? fromVal : activeSection;
+    elements.copyToSection.value = SECTIONS.includes(toVal) ? toVal : (SECTIONS.find(s => s !== elements.copyFromSection.value) || activeSection);
+  }
+
+  function renderTrackList(){
+    elements.trackList.innerHTML='';
+    tracks.forEach(t => {
+      ensureTrackPositions(t);
+      const el=document.createElement('div');
+      el.className='track-item'+(t.id===selectedId?' active':'')+(t.id===draggedTrackId?' dragging':'')+(t.id===trackDropId?' drop-target':'');
+      el.draggable=true;
+      const vis=t.pos[activeSection].visible;
+      el.innerHTML=`<div class="track-main"><div class="dot-preview" style="background:${t.color}"></div><div class="track-name-text">${t.name}</div></div><label class="toggle"><input type="checkbox" ${vis?'checked':''}>表示</label>`;
+      el.onclick=(e)=>{
+        if(e.target.type!=='checkbox' && draggedTrackId===null){
+          selectedId=t.id;
+          renderAll();
+        }
+      };
+      const checkbox = el.querySelector('input');
+      checkbox.onchange=(e)=>{
+        t.pos[activeSection].visible=e.target.checked;
+        renderAll();
+      };
+      el.ondragstart=(e)=>{
+        draggedTrackId=t.id;
+        trackDropId=null;
+        if(e.dataTransfer){
+          e.dataTransfer.effectAllowed='move';
+          e.dataTransfer.setData('text/plain', String(t.id));
+        }
+      };
+      el.ondragover=(e)=>{
+        e.preventDefault();
+        trackDropId=t.id;
+        el.classList.add('drop-target');
+      };
+      el.ondragleave=()=>{
+        if(trackDropId===t.id) trackDropId=null;
+        el.classList.remove('drop-target');
+      };
+      el.ondrop=(e)=>{
+        e.preventDefault();
+        const from=tracks.findIndex(x=>x.id===draggedTrackId);
+        const to=tracks.findIndex(x=>x.id===t.id);
+        tracks=moveItem(tracks,from,to);
+        draggedTrackId=null;
+        trackDropId=null;
+        renderAll();
+      };
+      el.ondragend=()=>{
+        draggedTrackId=null;
+        trackDropId=null;
+        renderAll();
+      };
+      elements.trackList.appendChild(el);
+    });
+  }
+
+  function renderControls(){
+    elements.projectNameInput.value = projectName;
+    refreshCopySelects();
+    const t=getSelected();
+    if(!t) return;
+    elements.nameInput.value=t.name;
+    elements.colorInput.value=t.color;
+    const p=t.pos[activeSection];
+    elements.panSlider.value=p.pan;
+    elements.panValue.textContent=p.pan;
+    elements.depthSlider.value=p.depth;
+    elements.depthValue.textContent=p.depth;
+    elements.widthSlider.value=p.w;
+    elements.widthValue.textContent=p.w;
+    elements.heightSlider.value=p.h;
+    elements.heightValue.textContent=p.h;
+  }
+
+  function createDotBackground(color){
+    return `radial-gradient(circle at center, rgba(255,255,255,0) 0%, ${color}2b 38%, ${color}52 68%, ${color}cc 100%)`;
+  }
+
+  function handleDotPointerDown(e, clickedTrackId){
+    selectedId = clickedTrackId;
+    const rect = elements.stage.getBoundingClientRect();
+    const t = tracks.find(x=>x.id===clickedTrackId);
+    if(!t) return;
+    const p = t.pos[activeSection];
+    const centerX=((p.pan+100)/200)*rect.width;
+    const centerY=(1-(p.depth/100))*rect.height;
+
+    dragging = { id: clickedTrackId, section: activeSection };
+    resizeStart = null;
+
+    if(e.shiftKey){
+      dragMode = 'resize';
+      resizeStart = {
+        pointerX: e.clientX,
+        pointerY: e.clientY,
+        w: p.w,
+        h: p.h
+      };
+    } else {
+      dragMode = 'move';
+      dragOffset.x = (e.clientX-rect.left) - centerX;
+      dragOffset.y = (e.clientY-rect.top) - centerY;
+    }
+
+    if(e.currentTarget && e.currentTarget.setPointerCapture){
+      try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(err){}
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    renderAll();
+  }
+
+  function renderStage(){
+    elements.stage.querySelectorAll('.track-dot,.track-name').forEach(e => e.remove());
+    const visibleTracks = tracks.filter(t => t.pos[activeSection] && t.pos[activeSection].visible);
+    const layerMap = new Map();
+    const maxLayer = Math.max(visibleTracks.length - 1, 0);
+
+    visibleTracks.forEach((track, index) => {
+      layerMap.set(track.id, maxLayer - index);
+    });
+
+    visibleTracks.forEach(t => {
+      const p=t.pos[activeSection];
+      const layer = layerMap.get(t.id) ?? 0;
+      const x=((p.pan+100)/200)*elements.stage.clientWidth;
+      const y=(1-(p.depth/100))*elements.stage.clientHeight;
+      const scaledW=fitSizeToStageSize(p.w,elements.stage);
+      const scaledH=fitSizeToStageSize(p.h,elements.stage);
+
+      const label=document.createElement('div');
+      label.className='track-name';
+      const labelOffsetX = scaledW/2 + 4;
+      const labelOffsetY = scaledH/2 + 4;
+      label.style.left=(x + labelOffsetX)+'px';
+      label.style.top=(y - labelOffsetY)+'px';
+      label.style.zIndex=String(100 + layer * 3 + 1);
+      label.textContent=t.name;
+
+      const dot=document.createElement('div');
+      dot.className='track-dot';
+      dot.style.left=x+'px';
+      dot.style.top=y+'px';
+      dot.style.width=scaledW+'px';
+      dot.style.height=scaledH+'px';
+      dot.style.zIndex=String(100 + layer * 3 + 2);
+      dot.style.background=createDotBackground(t.color);
+      dot.style.opacity=depthOpacity(p.depth);
+      dot.style.filter=`brightness(${getBrightnessByTrackOrder(t.id).toFixed(2)})`;
+      if(shiftKeyDown) dot.classList.add('shift-resize');
+      dot.onpointerdown=(e)=>handleDotPointerDown(e, t.id);
+
+      elements.stage.appendChild(label);
+      elements.stage.appendChild(dot);
+    });
+  }
+
+  function commitSectionRename(oldName, rawValue){
+    const newName=(rawValue||'').trim();
+    if(!newName || newName===oldName || SECTIONS.includes(newName)){
+      sectionEditing=null;
+      renderAll();
+      return;
+    }
+    const idx=SECTIONS.indexOf(oldName);
+    if(idx<0) return;
+    SECTIONS[idx]=newName;
+    tracks.forEach(t => {
+      t.pos[newName]=t.pos[oldName] || defaultPos();
+      delete t.pos[oldName];
+    });
+    sectionTodos[newName] = Array.isArray(sectionTodos[oldName]) ? sectionTodos[oldName] : [];
+    delete sectionTodos[oldName];
+    if(activeSection===oldName) activeSection=newName;
+    sectionEditing=null;
+    renderAll();
+  }
+
+  function addSectionTodo(section, rawText){
+    const text = (rawText || '').trim();
+    if(!text) return;
+    if(!Array.isArray(sectionTodos[section])) sectionTodos[section] = [];
+    sectionTodos[section].push({ text, done:false });
+  }
+
+  function toggleTodoExpanded(section){
+    expandedTodoSections[section] = !expandedTodoSections[section];
+  }
+
+  function toggleSectionTodo(section, index){
+    const list = sectionTodos[section];
+    if(!Array.isArray(list) || !list[index]) return;
+    list[index].done = !list[index].done;
+  }
+
+  function deleteSectionTodo(section, index){
+    const list = sectionTodos[section];
+    if(!Array.isArray(list)) return;
+    list.splice(index, 1);
+  }
+
+  function startTodoEdit(section, index){
+    const list = sectionTodos[section];
+    if(!Array.isArray(list) || !list[index]) return;
+    editingTodo = { section, index };
+  }
+
+  function commitTodoEdit(section, index, rawText){
+    const list = sectionTodos[section];
+    if(!Array.isArray(list) || !list[index]){
+      editingTodo = null;
+      return;
+    }
+    const text = (rawText || '').trim();
+    if(!text){
+      deleteSectionTodo(section, index);
+    } else {
+      list[index].text = text;
+    }
+    editingTodo = null;
+  }
+
+  function cancelTodoEdit(){
+    editingTodo = null;
+  }
+
+  function renderSections(){
+    ensureSectionTodos();
+    elements.sectionGrid.innerHTML='';
+    SECTIONS.forEach(s => {
+      const card=document.createElement('div');
+      card.className='section-card'+(s===activeSection?' active':'')+(s===draggedSection?' dragging':'')+(s===sectionDrop?' drop-target':'');
+      card.draggable=true;
+
+      const header=document.createElement('div');
+      header.className='section-header';
+      if(sectionEditing===s){
+        const input=document.createElement('input');
+        input.className='section-rename';
+        input.type='text';
+        input.value=s;
+        input.onkeydown=(e)=>{
+          if(e.key==='Enter') commitSectionRename(s,input.value);
+          if(e.key==='Escape'){ sectionEditing=null; renderAll(); }
+        };
+        input.onblur=()=>commitSectionRename(s,input.value);
+        header.appendChild(input);
+        setTimeout(function(){ input.focus(); input.select(); },0);
+      } else {
+        const title=document.createElement('div');
+        title.className='section-title';
+        title.textContent=s;
+        title.onclick=(e)=>{ e.stopPropagation(); sectionEditing=s; renderAll(); };
+        const count=document.createElement('button');
+        count.className='icon-btn';
+        count.type='button';
+        count.textContent=tracks.filter(t=>t.pos[s] && t.pos[s].visible).length;
+        header.appendChild(title);
+        header.appendChild(count);
+      }
+
+      const mini=document.createElement('div');
+      mini.className='section-mini';
+      card.appendChild(header);
+      card.appendChild(mini);
+
+      const todoWrap=document.createElement('div');
+      todoWrap.className='section-todo-wrap';
+      const todoList=document.createElement('div');
+      todoList.className='section-todo-list';
+      const todos = Array.isArray(sectionTodos[s]) ? sectionTodos[s] : [];
+      const visibleTodos = todos;
+
+      if(visibleTodos.length){
+        visibleTodos.forEach((todo, index) => {
+          const item=document.createElement('div');
+          item.className='section-todo-item' + (todo.done ? ' done' : '');
+          const checkbox=document.createElement('input');
+          checkbox.type='checkbox';
+          checkbox.checked=!!todo.done;
+          checkbox.onclick=(e)=>{
+            e.stopPropagation();
+          };
+          checkbox.onchange=(e)=>{
+            e.stopPropagation();
+            toggleSectionTodo(s,index);
+            renderAll();
+          };
+          item.appendChild(checkbox);
+
+          const isEditing = editingTodo && editingTodo.section === s && editingTodo.index === index;
+          if(isEditing){
+            const editInput=document.createElement('input');
+            editInput.className='section-todo-edit';
+            editInput.type='text';
+            editInput.value=todo.text;
+            editInput.onclick=(e)=>e.stopPropagation();
+            editInput.onkeydown=(e)=>{
+              e.stopPropagation();
+              if(e.key==='Enter'){
+                commitTodoEdit(s,index,editInput.value);
+                renderAll();
+              } else if(e.key==='Escape'){
+                cancelTodoEdit();
+                renderAll();
+              }
+            };
+            editInput.onblur=()=>{
+              commitTodoEdit(s,index,editInput.value);
+              renderAll();
+            };
+            item.appendChild(editInput);
+            setTimeout(()=>{
+              editInput.focus();
+              editInput.select();
+            },0);
+          } else {
+            const text=document.createElement('div');
+            text.className='section-todo-text';
+            text.textContent=todo.text;
+            item.appendChild(text);
+            item.ondblclick=(e)=>{
+              e.stopPropagation();
+              startTodoEdit(s,index);
+              renderAll();
+            };
+          }
+
+          item.onclick=(e)=>{
+            e.stopPropagation();
+          };
+          todoList.appendChild(item);
+        });
+        
+      } else {
+        const empty=document.createElement('div');
+        empty.className='section-todo-empty';
+        empty.textContent='Todoなし';
+        todoList.appendChild(empty);
+      }
+
+      const addRow=document.createElement('div');
+      addRow.className='section-todo-add';
+      const addInput=document.createElement('input');
+      addInput.className='section-todo-input';
+      addInput.type='text';
+      addInput.placeholder='Add todo';
+      addInput.onclick=(e)=>e.stopPropagation();
+      addInput.onkeydown=(e)=>{
+        e.stopPropagation();
+        if(e.key==='Enter'){
+          addSectionTodo(s, addInput.value);
+          renderAll();
+        }
+      };
+      const addBtn=document.createElement('button');
+      addBtn.className='section-todo-btn';
+      addBtn.type='button';
+      addBtn.textContent='+';
+      addBtn.onclick=(e)=>{
+        e.stopPropagation();
+        addSectionTodo(s, addInput.value);
+        renderAll();
+      };
+      addRow.appendChild(addInput);
+      addRow.appendChild(addBtn);
+      todoWrap.appendChild(todoList);
+      todoWrap.appendChild(addRow);
+      card.appendChild(todoWrap);
+
+      card.onclick=()=>{ if(draggedSection===null){ activeSection=s; renderAll(); } };
+      card.ondragstart=(e)=>{
+        draggedSection=s;
+        sectionDrop=null;
+        if(e.dataTransfer){
+          e.dataTransfer.effectAllowed='move';
+          e.dataTransfer.setData('text/plain', s);
+        }
+      };
+      card.ondragover=(e)=>{
+        e.preventDefault();
+        sectionDrop=s;
+        card.classList.add('drop-target');
+      };
+      card.ondragleave=()=>{
+        if(sectionDrop===s) sectionDrop=null;
+        card.classList.remove('drop-target');
+      };
+      card.ondrop=(e)=>{
+        e.preventDefault();
+        const from=SECTIONS.indexOf(draggedSection);
+        const to=SECTIONS.indexOf(s);
+        SECTIONS=moveItem(SECTIONS,from,to);
+        ensureSectionTodos();
+        draggedSection=null;
+        sectionDrop=null;
+        renderAll();
+      };
+      card.ondragend=()=>{ draggedSection=null; sectionDrop=null; renderAll(); };
+      elements.sectionGrid.appendChild(card);
+
+      const miniScale = mini.clientWidth / Math.max(elements.stage.clientWidth, 1);
+      tracks.forEach(t => {
+        const p=t.pos[s];
+        if(!p || !p.visible) return;
+        const x=((p.pan+100)/200)*mini.clientWidth;
+        const y=(1-(p.depth/100))*mini.clientHeight;
+        const dot=document.createElement('div');
+        dot.style.position='absolute';
+        dot.style.left=x+'px';
+        dot.style.top=y+'px';
+        const miniW=Math.max(4, Math.round(fitSizeToStageSize(p.w, elements.stage) * miniScale));
+        const miniH=Math.max(4, Math.round(fitSizeToStageSize(p.h, elements.stage) * miniScale));
+        dot.style.width=miniW+'px';
+        dot.style.height=miniH+'px';
+        dot.style.borderRadius='50%';
+        dot.style.transform='translate(-50%,-50%)';
+        dot.style.background=createDotBackground(t.color);
+        dot.style.opacity=depthOpacity(p.depth);
+        dot.style.filter=`brightness(${getBrightnessByTrackOrder(t.id).toFixed(2)})`;
+        mini.appendChild(dot);
+      });
+    });
+  }
+
+  function renderAll(){
+    renderTrackList();
+    renderControls();
+    renderStage();
+    elements.stageSectionTitle.textContent = activeSection;
+    renderSections();
+    const selected = getSelected();
+    elements.statusText.textContent=`曲: ${projectName} / 表示中: ${activeSection} / 選択中: ${selected ? selected.name : '-'}`;
+  }
+
+  function bindEvents(){
+    elements.projectNameInput.oninput=(e)=>{ projectName = e.target.value || 'Untitled Song'; renderAll(); };
+    elements.nameInput.oninput=(e)=>{ const t=getSelected(); if(!t) return; t.name=e.target.value; renderAll(); };
+    elements.colorInput.oninput=(e)=>{ const t=getSelected(); if(!t) return; t.color=e.target.value; renderAll(); };
+
+    elements.panSlider.oninput=(e)=>{ const t=getSelected(); if(!t) return; t.pos[activeSection].pan=parseInt(e.target.value, 10); elements.panValue.textContent=e.target.value; renderStage(); renderSections(); };
+    elements.depthSlider.oninput=(e)=>{ const t=getSelected(); if(!t) return; t.pos[activeSection].depth=parseInt(e.target.value, 10); elements.depthValue.textContent=e.target.value; renderStage(); renderSections(); };
+    elements.widthSlider.oninput=(e)=>{ const t=getSelected(); if(!t) return; t.pos[activeSection].w=parseInt(e.target.value, 10); elements.widthValue.textContent=e.target.value; renderStage(); renderSections(); };
+    elements.heightSlider.oninput=(e)=>{ const t=getSelected(); if(!t) return; t.pos[activeSection].h=parseInt(e.target.value, 10); elements.heightValue.textContent=e.target.value; renderStage(); renderSections(); };
+
+    elements.stage.onpointermove=(e)=>{
+      shiftKeyDown = !!e.shiftKey;
+      const hoverDot = e.target && e.target.classList && e.target.classList.contains('track-dot');
+      if(hoverDot){
+        e.target.classList.toggle('shift-resize', !!e.shiftKey);
+      }
+
+      if(e.buttons === 0 && dragging){
+        dragging = null;
+        dragMode = null;
+        resizeStart = null;
+        return;
+      }
+      if(!dragging || dragging.section!==activeSection) return;
+      const rect=elements.stage.getBoundingClientRect();
+      const px=clamp(e.clientX-rect.left-dragOffset.x,0,rect.width);
+      const py=clamp(e.clientY-rect.top-dragOffset.y,0,rect.height);
+      const t=tracks.find(x=>x.id===dragging.id);
+      if(!t) return;
+      const p=t.pos[activeSection];
+
+      if(dragMode==='move'){
+        let pan=(px/rect.width)*200-100;
+        let depth=(1-py/rect.height)*100;
+        p.pan=clamp(Math.round(pan),-100,100);
+        p.depth=clamp(Math.round(depth),0,100);
+      } else if(dragMode==='resize'){
+        const scale=rect.width/560;
+        const start = resizeStart || { pointerX:e.clientX, pointerY:e.clientY, w:p.w, h:p.h };
+        let w = start.w + ((e.clientX - start.pointerX) * 2) / scale;
+        let h = start.h + ((e.clientY - start.pointerY) * 2) / scale;
+        w=snap(w,20);
+        h=snap(h,20);
+        p.w=clamp(Math.round(w),10,400);
+        p.h=clamp(Math.round(h),10,400);
+      }
+      renderAll();
+    };
+
+    function stopDrag(e){
+      dragOffset.x=0;
+      dragOffset.y=0;
+      dragging=null;
+      dragMode=null;
+      resizeStart=null;
+      if(e && e.target && e.target.releasePointerCapture){
+        try{ e.target.releasePointerCapture(e.pointerId); }catch(err){}
+      }
+    }
+    elements.stage.onpointerup=stopDrag;
+    elements.stage.onpointerleave=stopDrag;
+    elements.stage.onpointercancel=stopDrag;
+
+    elements.addTrackBtn.onclick=()=>{
+      const id=Date.now() + Math.floor(Math.random()*1000);
+      const pos={};
+      SECTIONS.forEach(s => {
+        pos[s]=defaultPos();
+        pos[s].visible = (s===activeSection);
+      });
+      tracks.push({id:id, name:'New', color:'#c7ced8', pos:pos});
+      selectedId=id;
+      renderAll();
+    };
+
+    elements.duplicateTrackBtn.onclick=()=>{
+      const t=getSelected(); if(!t) return;
+      const id=Date.now() + Math.floor(Math.random()*1000);
+      const copy=clone(t);
+      copy.id=id;
+      copy.name=t.name+' Copy';
+      tracks.push(copy);
+      selectedId=id;
+      renderAll();
+    };
+
+    elements.deleteTrackBtn.onclick=()=>{
+      if(tracks.length<=1) return;
+      tracks=tracks.filter(t => t.id!==selectedId);
+      selectedId=tracks[0] ? tracks[0].id : null;
+      renderAll();
+    };
+
+    elements.addSectionBtn.onclick=()=>{
+      let i=1, name='Section '+i;
+      while(SECTIONS.includes(name)){ i++; name='Section '+i; }
+      SECTIONS.push(name);
+      tracks.forEach(t => { t.pos[name]=defaultPos(); });
+      sectionTodos[name]=[];
+      activeSection=name;
+      renderAll();
+    };
+
+    elements.copySectionBtn.onclick=()=>{
+      const from=elements.copyFromSection.value;
+      const to=elements.copyToSection.value;
+      if(!from || !to || from===to) return;
+      tracks.forEach(t => { t.pos[to]=clone(t.pos[from]); });
+      activeSection=to;
+      renderAll();
+    };
+
+    elements.saveDefaultsBtn.onclick=()=>{
+      const payload = tracks.map((track, index) => ({
+        id: index + 1,
+        name: track.name,
+        color: track.color
+      }));
+      try{
+        localStorage.setItem(DEFAULT_NAME_COLOR_STORAGE_KEY, JSON.stringify(payload));
+        alert('現在の全トラックの名前と色を、このブラウザのデフォルトとして保存しました。');
+      }catch(err){
+        alert('デフォルト保存に失敗しました。');
+      }
+    };
+
+    elements.resetDefaultsBtn.onclick=()=>{
+      localStorage.removeItem(DEFAULT_NAME_COLOR_STORAGE_KEY);
+      alert('保存済みのデフォルトを解除しました。');
+    };
+
+    elements.saveProjectBtn.onclick=()=>{
+      projectName = elements.projectNameInput.value.trim() || 'Untitled Song';
+      renderAll();
+      const payload = getProjectPayload();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = sanitizeFileName(payload.name)+'.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    elements.loadProjectBtn.onclick=()=>{ elements.loadProjectInput.click(); };
+
+    elements.loadProjectInput.onchange = async (e)=>{
+      const file = e.target.files && e.target.files[0];
+      if(!file) return;
+      try{
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        if(!parsed || !Array.isArray(parsed.tracks) || !Array.isArray(parsed.sections)){
+          alert('プロジェクトJSONの形式が正しくありません。');
+          elements.loadProjectInput.value='';
+          return;
+        }
+        applyProject(parsed);
+        renderAll();
+      } catch(err){
+        alert('プロジェクトJSONを読み込めませんでした。');
+      }
+      elements.loadProjectInput.value='';
+    };
+
+    window.addEventListener('resize', renderAll);
+    window.addEventListener('keydown', (e)=>{ if(e.key === 'Shift'){ shiftKeyDown = true; renderStage(); } });
+    window.addEventListener('keyup', (e)=>{ if(e.key === 'Shift'){ shiftKeyDown = false; renderStage(); } });
+  }
+
+  function runSelfChecks(){
+    console.assert(elements.saveProjectBtn !== null, 'saveProjectBtn should exist');
+    console.assert(elements.loadProjectBtn !== null, 'loadProjectBtn should exist');
+    console.assert(elements.addTrackBtn !== null, 'addTrackBtn should exist');
+    console.assert(Array.isArray(SECTIONS) && SECTIONS.length > 0, 'SECTIONS should be initialized');
+    console.assert(Array.isArray(tracks) && tracks.length > 0, 'tracks should be initialized');
+    console.assert(getSelected() !== null, 'selected track should exist');
+    const firstBrightness = getBrightnessByTrackOrder(tracks[0].id);
+    const lastBrightness = getBrightnessByTrackOrder(tracks[tracks.length - 1].id);
+    console.assert(firstBrightness >= lastBrightness, 'higher tracks should be brighter than lower tracks');
+    console.assert(typeof renderStage === 'function', 'renderStage should exist');
+    console.assert(typeof handleDotPointerDown === 'function', 'handleDotPointerDown should exist');
+    console.assert(DEFAULT_SECTIONS[0] === 'Intro', 'Intro should be the first default section');
+    console.assert(elements.stageSectionTitle.textContent === '' || typeof elements.stageSectionTitle.textContent === 'string', 'stageSectionTitle should be writable');
+  }
+
+  assertRequiredElements();
+  bindEvents();
+  runSelfChecks();
+  renderAll();
+})();
+</script>
+</body>
+</html>

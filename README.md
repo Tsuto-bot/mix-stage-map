@@ -1,5 +1,7 @@
 # Mix Stage Map
 
+![Mix Stage Map Screenshot](screenshot.png)
+
 Mix Stage Map は、  
 ミックスの音の配置（左右・奥行き・広がり）を  
 視覚的に整理するためのツールです。
